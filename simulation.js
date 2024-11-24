@@ -320,7 +320,8 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!simulateButton) return;
 
   simulateButton.addEventListener("click", () => {
-// Update injury countdown and remove fully recovered injuries
+    
+    // Update injury countdown and remove fully recovered injuries
 playerStats.forEach(player => {
   player.injuries = player.injuries.filter(injury => {
     if (injury.gamesRemaining > 0) {
@@ -335,63 +336,72 @@ playerStats.forEach(player => {
     // Save the updated player stats after injury countdown
     localStorage.setItem("playerStats", JSON.stringify(playerStats));
 
-// Pick teams
     const [team1, team2] = pickTeams();
+    const team1Score = Math.floor(Math.random() * 5);
+    const team2Score = Math.floor(Math.random() * 5);
 
-    let team1Goals = 0;
-    let team2Goals = 0;
-    let events = [];
-
-    // Simulate the game for a set duration (e.g., 3 periods, 20 minutes each)
-    for (let period = 1; period <= 3; period++) {
-      console.log(`Period ${period} starting...`);
-
-      // Simulate each team's players for each period
-      team1.players.forEach(player => {
-        if (simulateShooting(player)) {
-          team1Goals++;
-          events.push({ scorer: player.name, assist: simulateAssist(player) ? getRandomItem(team1.players).name : "Unassisted" });
-        }
-
-        // Simulate assists
-        if (simulateAssist(player)) {
-          events.push({ scorer: player.name, assist: "Unassisted" });
-        }
-      });
-
-      team2.players.forEach(player => {
-        if (simulateShooting(player)) {
-          team2Goals++;
-          events.push({ scorer: player.name, assist: simulateAssist(player) ? getRandomItem(team2.players).name : "Unassisted" });
-        }
-
-        // Simulate assists
-        if (simulateAssist(player)) {
-          events.push({ scorer: player.name, assist: "Unassisted" });
-        }
-      });
-
-      // Simulate penalties
+    const events = [];
+    for (let i = 0; i < Math.max(team1Score, team2Score); i++) {
+      const scoringTeam = Math.random() > 0.5 ? team1 : team2;
+      const scorer = getRandomItem(scoringTeam.players);
+      const assister = Math.random() > 0.5 ? getRandomItem(scoringTeam.players) : "Unassisted";
       const penalty = simulatePenalty();
-      if (penalty) events.push({ penalty });
-
-      // Simulate injuries
       const injury = simulateInjury();
-      if (injury) events.push({ injury });
+
+      events.push({
+        team: scoringTeam.name,
+        scorer: scorer.name,
+        assist: assister === "Unassisted" ? "Unassisted" : assister.name, 
+        penalty: penalty,
+        injury: injury
+      });
     }
 
-    // Update player stats with the events
-    updatePlayerStats(events);
-
-    // Save the game result to history
-    saveGameToHistory({
+    const gameResult = {
       team1: team1.name,
       team2: team2.name,
-      score: `${team1Goals} - ${team2Goals}`,
-      events
-    });
+      score1: team1Score,
+      score2: team2Score,
+      events: events,
+      date: new Date().toLocaleString(),
+    };
 
-    // Display the final score and events
-    alert(`${team1.name} ${team1Goals} - ${team2.name} ${team2Goals}`);
+
+    // Save the game result to localStorage
+    saveGameToHistory(gameResult);
+
+    // Update player stats from the simulation events
+    updatePlayerStats(events);
+
+    // Display the results dynamically
+    const resultDiv = document.getElementById("simulation-result");
+    resultDiv.innerHTML = `
+      <h2>Game Results</h2>
+      <p>${team1.name}: ${team1Score} vs ${team2.name}: ${team2Score}</p>
+      <h3>Event Summary</h3>
+      <ul>
+        ${events
+          .map((event) => {
+              // Create the main text for each event
+              let eventText = `${event.team}: ${event.scorer} scored (${event.assist})`;
+
+              // If there is a penalty, append it
+          if (event.penalty) {
+            eventText += ` - Penalty: ${event.penalty}`;
+          }
+              
+              // If there is an injury, append it
+          if (event.injury) {
+          const injuryDetails = `${event.injury.player} is injured (${event.injury.injuryType}), missing ${event.injury.gamesMissed} games.`;
+          eventText += ` - Injury: ${injuryDetails}`;
+        }
+              // Return the formatted event item
+          return `<li>${eventText}</li>`;
+        }
+          )
+          .join("")}
+      </ul>
+    `;
+    console.log("Game simulated and results displayed."); // Debugging message
   });
 });
